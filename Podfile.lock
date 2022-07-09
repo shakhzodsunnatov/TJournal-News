@@ -1,0 +1,24 @@
+PODS:
+  - KRActivityIndicatorView (3.0.7)
+  - KRProgressHUD (3.4.7):
+    - KRActivityIndicatorView (= 3.0.7)
+  - SnapKit (5.6.0)
+
+DEPENDENCIES:
+  - KRProgressHUD
+  - SnapKit (~> 5.6)
+
+SPEC REPOS:
+  trunk:
+    - KRActivityIndicatorView
+    - KRProgressHUD
+    - SnapKit
+
+SPEC CHECKSUMS:
+  KRActivityIndicatorView: ad69e89c4ce40c986cf580595be4829dcad0e35a
+  KRProgressHUD: a248f0bc6c9c2aed40a37b76e03ffecc7f85c887
+  SnapKit: e01d52ebb8ddbc333eefe2132acf85c8227d9c25
+
+PODFILE CHECKSUM: 22ab78cf6c25c662b8df5ce22b239fdcf86646ac
+
+COCOAPODS: 1.11.3
