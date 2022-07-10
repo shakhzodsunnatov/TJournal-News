@@ -91,6 +91,7 @@ class NewsTableCell: UITableViewCell {
         imageView.contentMode = .scaleAspectFit
         imageView.image = UIImage(systemName: "person")
         imageView.isHidden = true
+        imageView.translatesAutoresizingMaskIntoConstraints = false
         return imageView
     }()
     

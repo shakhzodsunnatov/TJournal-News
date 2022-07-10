@@ -107,7 +107,10 @@ extension ViewController: UITableViewDelegate, UITableViewDataSource, ImageTappe
                 let urlstrin = arrModel.first?.image?.data?.uuid,
                 let url = URL(string: "https://leonardo.osnova.io/" + urlstrin)
             {
-                cell.newsImageView.loadImage(at: url)
+                cell.newsImageView.loadImage(at: url) { [weak self]value in
+                    guard value else {return}
+                    cell.makeConstraints()
+                }
             }
         case .itemSingle(let model):
             if
@@ -116,7 +119,10 @@ extension ViewController: UITableViewDelegate, UITableViewDataSource, ImageTappe
                 let urlstrin = model.image?.data?.uuid,
                 let url = URL(string: "https://leonardo.osnova.io/" + urlstrin)
             {
-                cell.newsImageView.loadImage(at: url)
+                cell.newsImageView.loadImage(at: url) { [weak self]value in
+                    guard value else {return}
+                    cell.makeConstraints()
+                }
             }
         case .none: break
         case .some(.string(_)): break

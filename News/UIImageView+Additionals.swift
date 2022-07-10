@@ -73,8 +73,8 @@ final class Networking: NSObject {
 
 
 extension UIImageView {
-    func loadImage(at url: URL) {
-        UIImageLoader.loader.load(url, for: self)
+    func loadImage(at url: URL, completion: @escaping (Bool)-> Void) {
+        UIImageLoader.loader.load(url, for: self, completion: completion)
     }
     
     func cancelImageLoad() {
@@ -90,7 +90,7 @@ class UIImageLoader {
     
     private init() {}
     
-    func load(_ url: URL, for imageView: UIImageView) {
+    func load(_ url: URL, for imageView: UIImageView, completion: @escaping (Bool)-> Void) {
         // 1
         let token = imageLoader.loadImage(url) { result in
             // 2
@@ -101,8 +101,10 @@ class UIImageLoader {
                 DispatchQueue.main.async {
                     imageView.image = image
                     imageView.isHidden = false
+                    completion(true)
                 }
             } catch {
+                completion(false)
                 // handle the error
             }
         }
