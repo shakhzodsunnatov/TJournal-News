@@ -14,6 +14,8 @@ class ViewController: UIViewController {
     private let viewModel = ViewModel()
     private var model: [ResultItem] = []
     
+    private let loader = ImageLoader()
+    
     private lazy var tableView: UITableView = {
         let tableView = UITableView()
         
@@ -30,7 +32,7 @@ class ViewController: UIViewController {
         
         return tableView
     }()
-
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .white
@@ -38,12 +40,12 @@ class ViewController: UIViewController {
         binds()
         viewModel.getNews()
     }
-
+    
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         
         tableView.snp.makeConstraints { make in
-            make.top.horizontalEdges.bottom.equalToSuperview()    
+            make.top.horizontalEdges.bottom.equalToSuperview()
         }
     }
     
@@ -79,7 +81,7 @@ class ViewController: UIViewController {
             }
         }
     }
-
+    
 }
 
 //MARK: - UITableViewDelegate & UITableViewDataSource (cell -> delegate)
@@ -94,16 +96,33 @@ extension ViewController: UITableViewDelegate, UITableViewDataSource, ImageTappe
         let cell = tableView.dequeueReusableCell(withIdentifier: "postCell", for: indexPath) as! NewsTableCell
         cell.delegate = self
         
-        cell.configuration(by: model[indexPath.row])
+        let model = model[indexPath.row]
         
-        if indexPath.row == model.count - 1 {
+        switch model.data?.blocks?.first?.data?.items {
+        case .itemsClass(let model): break
+        case .itemsItemArray(let arrModel):
+            if
+                arrModel.first?.image?.data?.type == .jpg ||
+                arrModel.first?.image?.data?.type == .png,
+                let urlstrin = arrModel.first?.image?.data?.uuid,
+                let url = URL(string: "https://leonardo.osnova.io/" + urlstrin)
+            {
+                cell.newsImageView.loadImage(at: url)
+            }
+        case .none: break
+        }
+        
+        cell.configuration(by: model)
+        
+        if indexPath.row == self.model.count - 1 {
             viewModel.getNews()
         }
         
         return cell
     }
     
-    func imageTapped(image: UIImage) {
+    func imageTapped(image: UIImage, id: String) {
+        print("ImageID: \(id)")
         let vc = NewsImageVC()
         vc.imageView.image = image
         vc.modalPresentationStyle = .fullScreen

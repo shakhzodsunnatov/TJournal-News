@@ -9,12 +9,15 @@ import UIKit
 import SnapKit
 
 protocol ImageTappedDelegate {
-    func imageTapped(image: UIImage)
+    func imageTapped(image: UIImage, id: String)
 }
 
 class NewsTableCell: UITableViewCell {
     
     var delegate: ImageTappedDelegate?
+    var imageId = ""
+    
+    private let loader = ImageLoader()
     
     let containerView = UIView()
     
@@ -27,7 +30,7 @@ class NewsTableCell: UITableViewCell {
     }()
     
     private let mainStack: UIStackView = {
-       let stack = UIStackView()
+        let stack = UIStackView()
         stack.axis = .vertical
         stack.distribution = .fill
         stack.spacing = 12
@@ -83,13 +86,18 @@ class NewsTableCell: UITableViewCell {
         return label
     }()
     
-    private let newsImageView: UIImageView = {
+    var newsImageView: UIImageView = {
         let imageView = UIImageView()
         imageView.contentMode = .scaleAspectFit
         imageView.image = UIImage(systemName: "person")
         imageView.isHidden = true
         return imageView
-    }()
+    }() {
+        didSet {
+            makeConstraints()
+            self.reloadInputViews()
+        }
+    }
     
     private let commitImageView: UIImageView = {
         let imageView = UIImageView()
@@ -102,7 +110,7 @@ class NewsTableCell: UITableViewCell {
         label.text = "234"
         return label
     }()
-
+    
     private let readerCountLB: UILabel = {
         let label = UILabel()
         label.text = "124"
@@ -159,7 +167,7 @@ class NewsTableCell: UITableViewCell {
         
     }
     
-    private func makeConstraints() {
+    func makeConstraints() {
         let marginGuide = contentView.layoutMarginsGuide
         
         containerView.snp.makeConstraints { make in
@@ -215,51 +223,158 @@ class NewsTableCell: UITableViewCell {
         super.layoutSubviews()
         iconImageView.clipsToBounds = true
         iconImageView.layer.cornerRadius = 5
+        makeConstraints()
     }
     
     @objc private func imageTapped() {
-        delegate?.imageTapped(image: newsImageView.image!)
-    }
- 
-    func configuration(by model: ResultItem) {
-        
-        if
-            let urlstr = model.data?.subsite?.avatar?.data?.uuid,
-            let url = URL(string: urlstr) {
-            iconImageView.loadThumbnail(urlSting:  "https://leonardo.osnova.io/" +  urlstr)
-            iconImageView.isHidden = false
-        }
-        
-        
-        
-        groupNameLB.text = model.data?.subsite?.name ?? "name"
-        ownerNameLB.text = model.data?.author?.name ?? "No Name"
-        
-        let hour = Calendar.current.component(.hour, from: model.data?.date ?? Date.now)
-        
-        hourLabel.text = "hour \(hour)"
-        
-        if let title = model.data?.title {
-            titleLabel.text = title
-            titleLabel.isHidden = false
-        }
-        
-        if let subTitle = model.data?.blocks?.first?.data?.text {
-            self.subTitle.text = subTitle
-            self.subTitle.isHidden = false
-        }
-        
-        if
-            model.data?.blocks?.first?.data?.items?.first?.image?.data?.type != .gif,
-            let url = model.data?.blocks?.first?.data?.items?.first?.image?.data?.uuid
-        {
-            newsImageView.loadThumbnail(urlSting: "https://leonardo.osnova.io/" + url)
-            newsImageView.isHidden = false
-        }
-        
-        commitCountLB.text = String(describing: model.data?.counters?.comments ?? 0)
-        readerCountLB.text = String(describing: model.data?.counters?.reposts ?? 0)
+        delegate?.imageTapped(image: newsImageView.image!, id: imageId)
     }
     
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        newsImageView.cancelImageLoad()
+        newsImageView.image = nil
+        newsImageView.isHidden = true
+    }
+    
+    
+    func configuration(by model: ResultItem) {
+        DispatchQueue.main.async {
+            
+            if
+                let urlstr = model.data?.subsite?.avatar?.data?.uuid,
+                let url = URL(string: urlstr) {
+                self.iconImageView.loadThumbnail(urlSting:  "https://leonardo.osnova.io/" +  urlstr)
+                self.imageId = urlstr
+                self.iconImageView.isHidden = false
+            }
+            
+            self.groupNameLB.text = model.data?.subsite?.name ?? "name"
+            self.ownerNameLB.text = model.data?.author?.name ?? "No Name"
+            
+            let hour = Calendar.current.component(.hour, from: model.data?.date ?? Date.now)
+            
+            self.hourLabel.text = "hour \(hour)"
+            
+            if let title = model.data?.title {
+                self.titleLabel.text = title
+                self.titleLabel.isHidden = false
+            }
+            
+            if let subTitle = model.data?.blocks?.first?.data?.text {
+                self.subTitle.text = subTitle
+                self.subTitle.isHidden = false
+            }
+            
+            self.commitCountLB.text = String(describing: model.data?.counters?.comments ?? 0)
+            self.readerCountLB.text = String(describing: model.data?.counters?.reposts ?? 0)
+            
+        }
+    }
+    
+}
+
+
+extension UIImageView {
+    func loadImage(at url: URL) {
+        UIImageLoader.loader.load(url, for: self)
+    }
+    
+    func cancelImageLoad() {
+        UIImageLoader.loader.cancel(for: self)
+    }
+}
+
+class UIImageLoader {
+    static let loader = UIImageLoader()
+    
+    private let imageLoader = ImageLoader()
+    private var uuidMap = [UIImageView: UUID]()
+    
+    private init() {}
+    
+    func load(_ url: URL, for imageView: UIImageView) {
+        // 1
+        let token = imageLoader.loadImage(url) { result in
+            // 2
+            defer { self.uuidMap.removeValue(forKey: imageView) }
+            do {
+                // 3
+                let image = try result.get()
+                DispatchQueue.main.async {
+                    imageView.image = image
+                    imageView.isHidden = false
+                }
+            } catch {
+                // handle the error
+            }
+        }
+        
+        // 4
+        if let token = token {
+            uuidMap[imageView] = token
+        }
+    }
+    
+    func cancel(for imageView: UIImageView) {
+        if let uuid = uuidMap[imageView] {
+            imageLoader.cancelLoad(uuid)
+            uuidMap.removeValue(forKey: imageView)
+        }
+    }
+}
+
+
+class ImageLoader {
+    private var loadedImages = [URL: UIImage]()
+    private var runningRequests = [UUID: URLSessionDataTask]()
+    
+    func loadImage(_ url: URL, _ completion: @escaping (Swift.Result<UIImage, Error>) -> Void) -> UUID? {
+        
+        // 1
+        if let image = loadedImages[url] {
+            completion(.success(image))
+            return nil
+        }
+        
+        // 2
+        let uuid = UUID()
+        
+        let task = URLSession.shared.dataTask(with: url) { data, response, error in
+            // 3
+            defer {self.runningRequests.removeValue(forKey: uuid) }
+            
+            // 4
+            if let data = data, let image = UIImage(data: data) {
+                self.loadedImages[url] = image
+                completion(.success(image))
+                return
+            }
+            
+            // 5
+            guard let error = error else {
+                // without an image or an error, we'll just ignore this for now
+                // you could add your own special error cases for this scenario
+                return
+            }
+            
+            guard (error as NSError).code == NSURLErrorCancelled else {
+                completion(.failure(error))
+                return
+            }
+            
+            // the request was cancelled, no need to call the callback
+        }
+        task.resume()
+        
+        // 6
+        runningRequests[uuid] = task
+        return uuid
+    }
+    
+    func cancelLoad(_ uuid: UUID) {
+        runningRequests[uuid]?.cancel()
+        runningRequests.removeValue(forKey: uuid)
+    }
 }
 
