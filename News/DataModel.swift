@@ -658,7 +658,7 @@ enum Subtype: String, Codable {
 struct Block: Codable {
     let anchor: String?
     let data: BlockData?
-    let type: TweetType?
+    let type: NewsType?
     let cover, hidden: Bool?
 }
 
@@ -674,6 +674,8 @@ struct BlockData: Codable {
     let tweet: Tweet?
     let markdown: String?
     let media: Bool?
+    let telegram: Telegram?
+    let type: NewsType?
 
     enum CodingKeys: String, CodingKey {
         case items, uid, hash
@@ -683,13 +685,73 @@ struct BlockData: Codable {
         case dateCreated = "date_created"
         case text
         case textTruncated = "text_truncated"
-        case conversation, tweet, markdown, media
+        case conversation, tweet, markdown, media, telegram, type
+    }
+}
+
+// MARK: - Telegram
+struct Telegram: Codable {
+    let type: String?
+    let data: TelegramData?
+}
+
+// MARK: - TelegramData
+struct TelegramData: Codable {
+    let tgData: TgData?
+    let tgDataEncoded: String?
+
+    enum CodingKeys: String, CodingKey {
+        case tgData = "tg_data"
+        case tgDataEncoded = "tg_data_encoded"
+    }
+}
+
+// MARK: - TgData
+struct TgData: Codable {
+    let id: Int?
+    let url: String?
+    let version: Int?
+    let text: String?
+    let author: TgDataAuthor?
+    let photos: [Photo]?
+    let views: String?
+    let datetime: Int?
+    let isSupported: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case id, url, version, text, author, photos, views, datetime
+        case isSupported = "is_supported"
+    }
+}
+
+// MARK: - Photo
+struct Photo: Codable {
+    let width, height: Int?
+    let leonardoURL: String?
+
+    enum CodingKeys: String, CodingKey {
+        case width, height
+        case leonardoURL = "leonardo_url"
+    }
+}
+
+// MARK: - TgDataAuthor
+struct TgDataAuthor: Codable {
+    let name: String?
+    let avatarURL, url: String?
+
+    enum CodingKeys: String, CodingKey {
+        case name
+        case avatarURL = "avatar_url"
+        case url
     }
 }
 
 enum ItemsUnion: Codable {
     case itemsClass(ItemsClass)
     case itemsItemArray([ItemsItem])
+    case itemSingle(ItemsItem)
+    case string([String])
 
     init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
@@ -701,6 +763,13 @@ enum ItemsUnion: Codable {
             self = .itemsClass(x)
             return
         }
+        if let x = try? container.decode([String].self) {
+            self = .string(x)
+            return
+        }
+        if let x = try? container.decode(ItemsItem.self) {
+            self = .itemSingle(x)
+        }
         throw DecodingError.typeMismatch(ItemsUnion.self, DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "Wrong type for ItemsUnion"))
     }
 
@@ -710,6 +779,10 @@ enum ItemsUnion: Codable {
         case .itemsClass(let x):
             try container.encode(x)
         case .itemsItemArray(let x):
+            try container.encode(x)
+        case .string(let x):
+            try container.encode(x)
+        case .itemSingle(let x):
             try container.encode(x)
         }
     }
@@ -741,7 +814,6 @@ enum NewsType: Codable {
         switch (string) {
         case (let s?):
             self = .string(s)
-            print("NEWS TYPE \(s)")
         default:
             throw DecodingError.valueNotFound(
                 NewsType.self,

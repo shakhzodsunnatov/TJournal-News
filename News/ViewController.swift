@@ -99,7 +99,7 @@ extension ViewController: UITableViewDelegate, UITableViewDataSource, ImageTappe
         let model = model[indexPath.row]
         
         switch model.data?.blocks?.first?.data?.items {
-        case .itemsClass(let model): break
+        case .itemsClass(_): break
         case .itemsItemArray(let arrModel):
             if
                 arrModel.first?.image?.data?.type == .jpg ||
@@ -109,7 +109,17 @@ extension ViewController: UITableViewDelegate, UITableViewDataSource, ImageTappe
             {
                 cell.newsImageView.loadImage(at: url)
             }
+        case .itemSingle(let model):
+            if
+                model.image?.data?.type == .jpg ||
+                model.image?.data?.type == .png,
+                let urlstrin = model.image?.data?.uuid,
+                let url = URL(string: "https://leonardo.osnova.io/" + urlstrin)
+            {
+                cell.newsImageView.loadImage(at: url)
+            }
         case .none: break
+        case .some(.string(_)): break
         }
         
         cell.configuration(by: model)
